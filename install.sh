@@ -2,20 +2,24 @@
 set -euo pipefail
 
 # ============================================================
-#  Claude Desktop — RTL Support Installer
+#  Claude Desktop — RTL Support Installer (macOS)
 #  Adds right-to-left text rendering for Hebrew, Arabic, etc.
+#
+#  RTL JS logic by shraga100: https://github.com/shraga100/claude-desktop-rtl-patch
+#  macOS approach inspired by toboly: https://github.com/toboly/claude-desktop-rtl-patch-mac
 # ============================================================
 
 APP="/Applications/Claude.app"
 ASAR="$APP/Contents/Resources/app.asar"
 INSTALL_DIR="$HOME/.claude-rtl"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- Colors & helpers ---
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 
-step=0
-step() { step=$((step+1)); echo -e "\n${BLUE}${BOLD}[$step/$total_steps]${NC} $1"; }
+step_n=0
+step() { step_n=$((step_n+1)); echo -e "\n${BLUE}${BOLD}[$step_n/$total_steps]${NC} $1"; }
 ok()   { echo -e "  ${GREEN}✔${NC} $1"; }
 warn() { echo -e "  ${YELLOW}⚠${NC} $1"; }
 fail() { echo -e "  ${RED}✖ $1${NC}"; exit 1; }
@@ -102,45 +106,49 @@ step "Applying RTL patch"
 
 MAIN=$(python3 -c "import json; print(json.load(open('$WORK_DIR/claude-asar/package.json'))['main'])")
 MAIN_FILE="$WORK_DIR/claude-asar/$MAIN"
+MAIN_DIR=$(dirname "$MAIN_FILE")
 
 if [[ ! -f "$MAIN_FILE" ]]; then
   fail "Main entry file not found: $MAIN"
 fi
 ok "Main entry: $MAIN"
 
-if grep -q "RTL injection hook" "$MAIN_FILE"; then
-  ok "RTL patch is already present — skipping"
-else
-  cat >> "$MAIN_FILE" << 'PATCH'
+# Copy rtl.js into the asar
+RTL_JS_SRC="$SCRIPT_DIR/rtl.js"
+if [[ ! -f "$RTL_JS_SRC" ]]; then
+  fail "rtl.js not found in script directory: $SCRIPT_DIR"
+fi
+cp "$RTL_JS_SRC" "$MAIN_DIR/rtl.js"
+ok "Copied rtl.js into asar"
 
-// --- RTL injection hook (added manually for Hebrew/Arabic support) ---
+# Remove old patch if present, then append new hook
+if grep -q "RTL injection hook" "$MAIN_FILE"; then
+  python3 -c "
+import re
+with open('$MAIN_FILE', 'r') as f:
+    content = f.read()
+content = re.sub(r'\n// --- RTL injection hook.*', '', content, flags=re.DOTALL)
+with open('$MAIN_FILE', 'w') as f:
+    f.write(content)
+"
+  ok "Removed old RTL patch"
+fi
+
+cat >> "$MAIN_FILE" << 'HOOK'
+
+// --- RTL injection hook ---
 try {
   const { app: __rtlApp } = require('electron');
-  const __RTL_CSS = `
-    body, body p, body li, body ul, body ol, body div, body span, body td, body th,
-    body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 {
-      unicode-bidi: plaintext;
-    }
-    pre, code, pre *, code *, .hljs, .hljs *,
-    [class*="code"], [class*="Code"] {
-      direction: ltr !important;
-      unicode-bidi: embed !important;
-      text-align: left !important;
-    }
-    textarea, input[type="text"], [contenteditable="true"], [contenteditable=""] {
-      unicode-bidi: plaintext;
-    }
-  `;
+  const __rtlCode = require('fs').readFileSync(require('path').join(__dirname, 'rtl.js'), 'utf8');
   __rtlApp.on('web-contents-created', (_e, contents) => {
     contents.on('did-finish-load', () => {
-      contents.insertCSS(__RTL_CSS).catch(() => {});
+      contents.executeJavaScript(__rtlCode).catch(() => {});
     });
   });
 } catch (_e) {}
 // --- end RTL injection hook ---
-PATCH
-  ok "RTL CSS injection hook added"
-fi
+HOOK
+ok "RTL hook added to main entry"
 
 # --- Step 5: Repack ---
 step "Repacking app.asar"
@@ -167,18 +175,23 @@ fi
 step "Installing helper scripts"
 
 mkdir -p "$INSTALL_DIR"
+cp "$RTL_JS_SRC" "$INSTALL_DIR/rtl.js"
 
 cat > "$INSTALL_DIR/reapply.sh" << 'REAPPLY_SCRIPT'
 #!/bin/bash
 set -euo pipefail
 APP="/Applications/Claude.app"
 ASAR="$APP/Contents/Resources/app.asar"
+INSTALL_DIR="$HOME/.claude-rtl"
 
 if pgrep -f "Claude.app" > /dev/null 2>&1; then
   echo "ERROR: Claude Desktop is running. Please quit it first."; exit 1
 fi
 if [[ ! -d "$APP" ]]; then
   echo "ERROR: Claude Desktop not found."; exit 1
+fi
+if [[ ! -f "$INSTALL_DIR/rtl.js" ]]; then
+  echo "ERROR: rtl.js not found in $INSTALL_DIR"; exit 1
 fi
 
 WORK_DIR=$(mktemp -d)
@@ -189,44 +202,42 @@ npx --yes @electron/asar extract "$ASAR" "$WORK_DIR/claude-asar" 2>/dev/null
 
 MAIN=$(python3 -c "import json; print(json.load(open('$WORK_DIR/claude-asar/package.json'))['main'])")
 MAIN_FILE="$WORK_DIR/claude-asar/$MAIN"
+MAIN_DIR=$(dirname "$MAIN_FILE")
 
 if [[ ! -f "$MAIN_FILE" ]]; then
   echo "ERROR: Main entry file not found: $MAIN"; exit 1
 fi
 
+# Copy rtl.js
+cp "$INSTALL_DIR/rtl.js" "$MAIN_DIR/rtl.js"
+
+# Remove old patch if present
 if grep -q "RTL injection hook" "$MAIN_FILE"; then
-  echo "RTL patch is already applied."; exit 0
+  python3 -c "
+import re
+with open('$MAIN_FILE', 'r') as f:
+    content = f.read()
+content = re.sub(r'\n// --- RTL injection hook.*', '', content, flags=re.DOTALL)
+with open('$MAIN_FILE', 'w') as f:
+    f.write(content)
+"
 fi
 
-echo "Applying RTL patch..."
-cat >> "$MAIN_FILE" << 'PATCH'
+# Append hook
+cat >> "$MAIN_FILE" << 'HOOK'
 
-// --- RTL injection hook (added manually for Hebrew/Arabic support) ---
+// --- RTL injection hook ---
 try {
   const { app: __rtlApp } = require('electron');
-  const __RTL_CSS = `
-    body, body p, body li, body ul, body ol, body div, body span, body td, body th,
-    body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 {
-      unicode-bidi: plaintext;
-    }
-    pre, code, pre *, code *, .hljs, .hljs *,
-    [class*="code"], [class*="Code"] {
-      direction: ltr !important;
-      unicode-bidi: embed !important;
-      text-align: left !important;
-    }
-    textarea, input[type="text"], [contenteditable="true"], [contenteditable=""] {
-      unicode-bidi: plaintext;
-    }
-  `;
+  const __rtlCode = require('fs').readFileSync(require('path').join(__dirname, 'rtl.js'), 'utf8');
   __rtlApp.on('web-contents-created', (_e, contents) => {
     contents.on('did-finish-load', () => {
-      contents.insertCSS(__RTL_CSS).catch(() => {});
+      contents.executeJavaScript(__rtlCode).catch(() => {});
     });
   });
 } catch (_e) {}
 // --- end RTL injection hook ---
-PATCH
+HOOK
 
 echo "Repacking app.asar..."
 sudo npx --yes @electron/asar pack "$WORK_DIR/claude-asar" "$ASAR" 2>/dev/null
