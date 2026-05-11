@@ -35,6 +35,13 @@ sudo rm -rf /Applications/Claude.app
 sudo cp -R "$BACKUP" /Applications/Claude.app
 sudo codesign --force --deep --sign - /Applications/Claude.app 2>/dev/null
 
+# Remove LaunchAgent
+AGENT_LABEL="com.claude-rtl.watcher"
+AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_LABEL}.plist"
+launchctl bootout "gui/$(id -u)/$AGENT_LABEL" 2>/dev/null || true
+rm -f "$AGENT_PLIST"
+echo -e "${GREEN}✔${NC} Removed auto-reapply watcher"
+
 if [[ -d "$HOME/.claude-rtl" ]]; then
   rm -rf "$HOME/.claude-rtl"
   echo -e "${GREEN}✔${NC} Removed ~/.claude-rtl"

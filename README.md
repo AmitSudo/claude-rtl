@@ -2,11 +2,6 @@
 
 Add right-to-left (RTL) text rendering to [Claude Desktop](https://claude.ai/download) on macOS for Hebrew, Arabic, Persian, Urdu, and other RTL languages.
 
-<div dir="rtl">
-
-**תמיכה בעברית, ערבית ושפות RTL נוספות באפליקציית Claude Desktop.**
-
-</div>
 
 ## What it does
 
@@ -18,10 +13,21 @@ Add right-to-left (RTL) text rendering to [Claude Desktop](https://claude.ai/dow
 
 ## Quick start
 
+**One-liner:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/AmitSudo/claude-rtl/main/install.sh | bash
+```
+
+**Or clone and run:**
 ```bash
 git clone https://github.com/AmitSudo/claude-rtl.git
 cd claude-rtl
 bash install.sh
+```
+
+**Or via Homebrew:**
+```bash
+brew install AmitSudo/claude-rtl/claude-rtl
 ```
 
 The installer will:
@@ -32,13 +38,13 @@ The installer will:
 
 ## After a Claude Desktop auto-update
 
-Auto-updates overwrite the patch. Re-apply with:
+A background watcher (LaunchAgent) detects updates and re-applies the patch automatically. No action needed.
+
+If the watcher fails or you disabled it, re-apply manually:
 
 ```bash
 bash ~/.claude-rtl/reapply.sh
 ```
-
-Or re-run `bash install.sh` from this repo.
 
 ## Uninstall
 

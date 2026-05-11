@@ -113,10 +113,13 @@ if [[ ! -f "$MAIN_FILE" ]]; then
 fi
 ok "Main entry: $MAIN"
 
-# Copy rtl.js into the asar
+# Copy rtl.js into the asar (download if running via curl|bash)
+REPO_URL="https://raw.githubusercontent.com/AmitSudo/claude-rtl/main"
 RTL_JS_SRC="$SCRIPT_DIR/rtl.js"
 if [[ ! -f "$RTL_JS_SRC" ]]; then
-  fail "rtl.js not found in script directory: $SCRIPT_DIR"
+  RTL_JS_SRC=$(mktemp)
+  curl -fsSL "$REPO_URL/rtl.js" -o "$RTL_JS_SRC" || fail "Failed to download rtl.js"
+  ok "Downloaded rtl.js from GitHub"
 fi
 cp "$RTL_JS_SRC" "$MAIN_DIR/rtl.js"
 ok "Copied rtl.js into asar"
@@ -348,6 +351,52 @@ ok "Installed to $INSTALL_DIR"
 ok "  reapply.sh — re-patch after auto-updates"
 ok "  revert.sh  — restore from backup"
 
+# Install watcher
+if [[ -f "$SCRIPT_DIR/watcher.sh" ]]; then
+  cp "$SCRIPT_DIR/watcher.sh" "$INSTALL_DIR/watcher.sh"
+  chmod +x "$INSTALL_DIR/watcher.sh"
+elif [[ -f "$INSTALL_DIR/watcher.sh" ]]; then
+  : # already installed
+else
+  # Download watcher for curl|bash installs
+  curl -fsSL "https://raw.githubusercontent.com/AmitSudo/claude-rtl/main/watcher.sh" \
+    -o "$INSTALL_DIR/watcher.sh" 2>/dev/null && chmod +x "$INSTALL_DIR/watcher.sh" || true
+fi
+
+# Install LaunchAgent for auto-reapply
+AGENT_LABEL="com.claude-rtl.watcher"
+AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_LABEL}.plist"
+
+# Unload existing agent if present
+launchctl bootout "gui/$(id -u)/$AGENT_LABEL" 2>/dev/null || true
+
+cat > "$AGENT_PLIST" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${AGENT_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>${INSTALL_DIR}/watcher.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${INSTALL_DIR}/watcher-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>${INSTALL_DIR}/watcher-stderr.log</string>
+</dict>
+</plist>
+PLIST
+
+launchctl bootstrap "gui/$(id -u)" "$AGENT_PLIST" 2>/dev/null || true
+ok "Auto-reapply watcher installed (LaunchAgent)"
+
 # --- Done ---
 echo ""
 echo -e "${GREEN}${BOLD}┌─────────────────────────────────────────────┐${NC}"
@@ -356,9 +405,10 @@ echo -e "${GREEN}${BOLD}└─────────────────�
 echo ""
 echo -e "  ${BOLD}Next steps:${NC}"
 echo "  1. Launch Claude Desktop"
-echo "  2. Test with Hebrew: אני בונה פרויקט עם Next.js ו-TypeScript"
-echo "  3. Test with Arabic: مرحبا بالعالم"
+echo "  2. Test by sending a message in Hebrew or Arabic"
+echo "  3. Verify lists render with bullets/numbers on the correct side"
 echo ""
-echo -e "  ${BOLD}After an auto-update:${NC}  bash ~/.claude-rtl/reapply.sh"
-echo -e "  ${BOLD}To undo everything:${NC}    bash ~/.claude-rtl/revert.sh"
+echo -e "  ${BOLD}Auto-reapply:${NC}  Enabled — patch is re-applied automatically after updates"
+echo -e "  ${BOLD}Manual reapply:${NC}  bash ~/.claude-rtl/reapply.sh"
+echo -e "  ${BOLD}Undo everything:${NC}  bash uninstall.sh"
 echo ""
