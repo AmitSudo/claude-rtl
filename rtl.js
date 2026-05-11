@@ -174,7 +174,8 @@
                 'pre,.code-block__code{unicode-bidi:embed!important;direction:ltr!important;text-align:left!important}',
                 'code{unicode-bidi:isolate!important;direction:ltr!important}',
                 '[dir]{text-align:start!important}[dir="rtl"]{direction:rtl!important}[dir="ltr"]{direction:ltr!important}',
-                '[dir]>*:not([dir]):not(pre):not(code):not(.code-block__code){unicode-bidi:plaintext;text-align:start}'
+                '[dir]>*:not([dir]):not(pre):not(code):not(.code-block__code){unicode-bidi:plaintext;text-align:start}',
+                '[class*="mask-image"]{-webkit-mask-image:none!important;mask-image:none!important}'
             ].join('');
             document.head.appendChild(s);
         }
