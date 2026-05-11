@@ -175,13 +175,32 @@
                 'code{unicode-bidi:isolate!important;direction:ltr!important}',
                 '[dir]{text-align:start!important}[dir="rtl"]{direction:rtl!important}[dir="ltr"]{direction:ltr!important}',
                 '[dir]>*:not([dir]):not(pre):not(code):not(.code-block__code){unicode-bidi:plaintext;text-align:start}',
-                '[class*="mask-image"]{-webkit-mask-image:none!important;mask-image:none!important}'
+                '[class*="mask-image"]{-webkit-mask-image:none!important;mask-image:none!important}',
+                '#claude-rtl-credit:hover{opacity:1!important}'
             ].join('');
             document.head.appendChild(s);
         }
 
+        function injectCredit() {
+            if (document.getElementById('claude-rtl-credit')) return;
+            var sidebar = document.querySelector('nav')
+                || document.querySelector('[class*="sidebar"]')
+                || document.querySelector('[class*="Sidebar"]')
+                || document.querySelector('[class*="conversation-list"]')
+                || document.querySelector('[class*="history"]');
+            if (!sidebar) return;
+            var el = document.createElement('a');
+            el.id = 'claude-rtl-credit';
+            el.href = 'https://github.com/AmitSudo/claude-rtl';
+            el.target = '_blank';
+            el.textContent = 'RTL by amitpaw';
+            el.style.cssText = 'display:block;text-align:center;padding:6px 0;font-size:11px;color:var(--text-text-400, #888);text-decoration:none;opacity:0.5;transition:opacity 0.2s;letter-spacing:0.3px';
+            sidebar.appendChild(el);
+        }
+
         function init() {
             injectStyles();
+            injectCredit();
             processAll();
 
             document.addEventListener('input', function(e) {
@@ -233,6 +252,7 @@
                     } else {
                         processAll();
                     }
+                    injectCredit();
                 }, 50);
             });
             obs.observe(document.body, { childList: true, subtree: true, characterData: true });
