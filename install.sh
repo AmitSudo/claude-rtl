@@ -117,7 +117,7 @@ else
 try {
   const { app: __rtlApp } = require('electron');
   const __RTL_CSS = `
-    body, body p, body li, body div, body span, body td, body th,
+    body, body p, body li, body ul, body ol, body div, body span, body td, body th,
     body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 {
       unicode-bidi: plaintext;
     }
@@ -205,7 +205,7 @@ cat >> "$MAIN_FILE" << 'PATCH'
 try {
   const { app: __rtlApp } = require('electron');
   const __RTL_CSS = `
-    body, body p, body li, body div, body span, body td, body th,
+    body, body p, body li, body ul, body ol, body div, body span, body td, body th,
     body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 {
       unicode-bidi: plaintext;
     }
