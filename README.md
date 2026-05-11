@@ -64,7 +64,7 @@ The installer extracts Claude Desktop's `app.asar`, adds a `rtl.js` file contain
 
 **What gets modified:**
 - `app.asar` — `rtl.js` added + hook appended to main entry
-- Electron fuse `EnableEmbeddedAsarIntegrityValidation` set to `off`
+- Integrity hashes updated in all `Info.plist` files (falls back to fuse disable if needed)
 - App re-signed with ad-hoc signature
 
 ## Credits
