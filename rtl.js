@@ -1,7 +1,5 @@
 // --- CLAUDE RTL PATCH START ---
 // Smart RTL support for Hebrew, Arabic, Persian, Urdu and other RTL languages.
-// Based on the RTL logic by shraga100: https://github.com/shraga100/claude-desktop-rtl-patch
-// macOS adaptation inspired by toboly: https://github.com/toboly/claude-desktop-rtl-patch-mac
 ;(function() {
     'use strict';
     if (typeof document === 'undefined') return;

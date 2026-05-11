@@ -73,11 +73,6 @@ The installer extracts Claude Desktop's `app.asar`, adds a `rtl.js` file contain
 - Integrity hashes updated in all `Info.plist` files (falls back to fuse disable if needed)
 - App re-signed with ad-hoc signature
 
-## Credits
-
-- RTL JavaScript logic by [shraga100](https://github.com/shraga100/claude-desktop-rtl-patch)
-- macOS adaptation inspired by [toboly](https://github.com/toboly/claude-desktop-rtl-patch-mac)
-
 ## License
 
 MIT
