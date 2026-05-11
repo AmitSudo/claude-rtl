@@ -156,11 +156,52 @@ step "Repacking app.asar"
 sudo npx --yes @electron/asar pack "$WORK_DIR/claude-asar" "$ASAR" 2>/dev/null
 ok "app.asar repacked"
 
-# --- Step 6: Disable asar integrity fuse & re-sign ---
-step "Disabling asar integrity check & re-signing"
+# --- Step 6: Update integrity hashes & re-sign ---
+step "Updating integrity hashes & re-signing"
 
-sudo npx --yes @electron/fuses write --app "$APP" EnableEmbeddedAsarIntegrityValidation=off 2>/dev/null
-ok "Asar integrity fuse disabled"
+# Compute old and new asar header hashes
+compute_asar_hash() {
+  python3 -c "
+import sys, struct, hashlib
+with open(sys.argv[1], 'rb') as f:
+    f.seek(12)
+    size = struct.unpack('<I', f.read(4))[0]
+    data = f.read(size)
+print(hashlib.sha256(data.decode('utf-8').encode('utf-8')).hexdigest())
+" "$1"
+}
+
+OLD_HASH=$(compute_asar_hash "$BACKUP_PATH/Contents/Resources/app.asar" 2>/dev/null || echo "")
+NEW_HASH=$(compute_asar_hash "$ASAR")
+
+if [[ -n "$OLD_HASH" && "$OLD_HASH" != "$NEW_HASH" ]]; then
+  ok "Old hash: $OLD_HASH"
+  ok "New hash: $NEW_HASH"
+
+  PLISTS=(
+    "$APP/Contents/Info.plist"
+    "$APP/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/Info.plist"
+    "$APP/Contents/Frameworks/Claude Helper.app/Contents/Info.plist"
+    "$APP/Contents/Frameworks/Claude Helper (GPU).app/Contents/Info.plist"
+    "$APP/Contents/Frameworks/Claude Helper (Plugin).app/Contents/Info.plist"
+    "$APP/Contents/Frameworks/Claude Helper (Renderer).app/Contents/Info.plist"
+  )
+
+  UPDATED=0
+  for plist in "${PLISTS[@]}"; do
+    [[ -f "$plist" ]] || continue
+    if grep -q "$OLD_HASH" "$plist" 2>/dev/null; then
+      sudo sed -i '' "s/$OLD_HASH/$NEW_HASH/g" "$plist"
+      ok "Updated: $(echo "$plist" | sed "s|$APP/||")"
+      ((UPDATED++))
+    fi
+  done
+  ok "Updated $UPDATED plist file(s)"
+else
+  warn "Could not compute hash diff — falling back to fuse disable"
+  sudo npx --yes @electron/fuses write --app "$APP" EnableEmbeddedAsarIntegrityValidation=off 2>/dev/null
+  ok "Asar integrity fuse disabled"
+fi
 
 sudo codesign --force --deep --sign - "$APP" 2>/dev/null
 ok "App re-signed (ad-hoc)"
@@ -239,11 +280,39 @@ try {
 // --- end RTL injection hook ---
 HOOK
 
+compute_asar_hash() {
+  python3 -c "
+import sys, struct, hashlib
+with open(sys.argv[1], 'rb') as f:
+    f.seek(12)
+    size = struct.unpack('<I', f.read(4))[0]
+    data = f.read(size)
+print(hashlib.sha256(data.decode('utf-8').encode('utf-8')).hexdigest())
+" "$1"
+}
+
+echo "Computing old asar hash..."
+OLD_HASH=$(compute_asar_hash "$ASAR")
+
 echo "Repacking app.asar..."
 sudo npx --yes @electron/asar pack "$WORK_DIR/claude-asar" "$ASAR" 2>/dev/null
 
-echo "Disabling asar integrity fuse..."
-sudo npx --yes @electron/fuses write --app "$APP" EnableEmbeddedAsarIntegrityValidation=off 2>/dev/null
+echo "Computing new asar hash..."
+NEW_HASH=$(compute_asar_hash "$ASAR")
+
+if [[ "$OLD_HASH" != "$NEW_HASH" ]]; then
+  echo "Updating integrity hashes in Info.plist files..."
+  for plist in \
+    "$APP/Contents/Info.plist" \
+    "$APP/Contents/Frameworks/Electron Framework.framework/Versions/A/Resources/Info.plist" \
+    "$APP/Contents/Frameworks/Claude Helper.app/Contents/Info.plist" \
+    "$APP/Contents/Frameworks/Claude Helper (GPU).app/Contents/Info.plist" \
+    "$APP/Contents/Frameworks/Claude Helper (Plugin).app/Contents/Info.plist" \
+    "$APP/Contents/Frameworks/Claude Helper (Renderer).app/Contents/Info.plist"; do
+    [[ -f "$plist" ]] || continue
+    grep -q "$OLD_HASH" "$plist" 2>/dev/null && sudo sed -i '' "s/$OLD_HASH/$NEW_HASH/g" "$plist"
+  done
+fi
 
 echo "Re-signing..."
 sudo codesign --force --deep --sign - "$APP" 2>/dev/null
