@@ -4,9 +4,6 @@ set -euo pipefail
 # ============================================================
 #  Claude Desktop — RTL Support Installer (macOS)
 #  Adds right-to-left text rendering for Hebrew, Arabic, etc.
-#
-#  RTL JS logic by shraga100: https://github.com/shraga100/claude-desktop-rtl-patch
-#  macOS approach inspired by toboly: https://github.com/toboly/claude-desktop-rtl-patch-mac
 # ============================================================
 
 APP="/Applications/Claude.app"
