@@ -27,7 +27,7 @@ The installer patches Claude Desktop's Electron main process to inject CSS via `
 ## Quick start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-rtl.git
+git clone https://github.com/AmitSudo/claude-rtl.git
 cd claude-rtl
 bash install.sh
 ```
