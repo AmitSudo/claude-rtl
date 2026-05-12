@@ -1,4 +1,4 @@
-# Claude Desktop RTL Support (macOS)
+# Claude Desktop Right To Left (RTL) Support (macOS)
 
 Add right-to-left (RTL) text rendering to [Claude Desktop](https://claude.ai/download) on macOS for Hebrew, Arabic, Persian, Urdu, and other RTL languages.
 
@@ -72,11 +72,6 @@ Modifying the original Claude.app forces an ad-hoc re-sign, which Anthropic's Co
 - **No auto-update conflict** — Anthropic's updates go to the original; the patched copy is independent
 - **Easy recovery** — if anything breaks, delete the copy
 
-## Credits
-
-- RTL detection logic adapted from [@shraga100/claude-desktop-rtl-patch](https://github.com/shraga100/claude-desktop-rtl-patch) (Windows)
-- Copy-based install approach inspired by [@soguy/claude-desktop-rtl-mac](https://github.com/soguy/claude-desktop-rtl-mac)
-- Earlier macOS in-place port: [@toboly/claude-desktop-rtl-patch-mac](https://github.com/toboly/claude-desktop-rtl-patch-mac)
 
 ## License
 
