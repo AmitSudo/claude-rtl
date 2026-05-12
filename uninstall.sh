@@ -2,53 +2,39 @@
 set -euo pipefail
 
 # ============================================================
-#  Claude Desktop — RTL Support Uninstaller
+#  Claude RTL — Uninstaller
+#
+#  Removes the patched copy at ~/Applications/Claude-RTL.app.
+#  Your original /Applications/Claude.app is never touched.
 # ============================================================
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; BOLD='\033[1m'; NC='\033[0m'
+PATCHED_APP="$HOME/Applications/Claude-RTL.app"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
 
 echo ""
-echo -e "${BOLD}Claude Desktop — RTL Support Uninstaller${NC}"
+echo -e "${BOLD}Claude RTL — Uninstaller${NC}"
 echo ""
 
-if pgrep -f "Claude.app" > /dev/null 2>&1; then
-  echo -e "${RED}✖ Claude Desktop is running. Please quit it first.${NC}"
+if [[ ! -d "$PATCHED_APP" ]]; then
+  echo -e "  Nothing to uninstall — $PATCHED_APP does not exist."
+  echo ""
+  exit 0
+fi
+
+if pgrep -f "Claude-RTL.app" >/dev/null 2>&1; then
+  echo -e "${RED}✖${NC} Claude-RTL.app is running. Quit it first."
   exit 1
 fi
 
-BACKUP=$(ls -dt ~/Claude.app.backup-* 2>/dev/null | head -1)
+read -rp "Remove $PATCHED_APP? [Y/n] " ans
+case "${ans:-Y}" in [Nn]*) echo "Aborted."; exit 0 ;; esac
 
-if [[ -z "$BACKUP" ]]; then
-  echo -e "${RED}✖ No backup found. Cannot revert automatically.${NC}"
-  echo "  You may need to reinstall Claude Desktop from https://claude.ai/download"
-  exit 1
-fi
+rm -rf "$PATCHED_APP"
 
-echo "Found backup: $BACKUP"
-read -rp "Restore Claude Desktop from this backup? [Y/n] " ans
-case "$ans" in
-  [Nn]*) echo "Aborted."; exit 0 ;;
-esac
+# Remove the parent directory if empty (~/Applications) — leave it otherwise
+rmdir "$HOME/Applications" 2>/dev/null || true
 
-echo "Restoring..."
-sudo rm -rf /Applications/Claude.app
-sudo cp -R "$BACKUP" /Applications/Claude.app
-sudo codesign --force --deep --sign - /Applications/Claude.app 2>/dev/null
-
-# Remove LaunchAgent
-AGENT_LABEL="com.claude-rtl.watcher"
-AGENT_PLIST="$HOME/Library/LaunchAgents/${AGENT_LABEL}.plist"
-launchctl bootout "gui/$(id -u)/$AGENT_LABEL" 2>/dev/null || true
-rm -f "$AGENT_PLIST"
-echo -e "${GREEN}✔${NC} Removed auto-reapply watcher"
-
-if [[ -d "$HOME/.claude-rtl" ]]; then
-  rm -rf "$HOME/.claude-rtl"
-  echo -e "${GREEN}✔${NC} Removed ~/.claude-rtl"
-fi
-
-echo -e "${GREEN}✔${NC} Claude Desktop restored to original state."
-echo ""
-echo "You can now launch Claude Desktop."
-echo "You may also delete your backups: rm -rf ~/Claude.app.backup-*"
+echo -e "${GREEN}✔${NC} Removed $PATCHED_APP"
+echo -e "${GREEN}✔${NC} Original /Applications/Claude.app was never touched."
 echo ""
