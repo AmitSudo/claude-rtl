@@ -73,6 +73,10 @@ Modifying the original Claude.app forces an ad-hoc re-sign, which Anthropic's Co
 - **Easy recovery** — if anything breaks, delete the copy
 
 
+## Releases
+
+See [tags](https://github.com/AmitSudo/claude-rtl/tags) for release history.
+
 ## License
 
 MIT
