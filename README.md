@@ -78,6 +78,10 @@ Modifying the original Claude.app forces an ad-hoc re-sign, which Anthropic's Co
 - Copy-based install approach inspired by [@soguy/claude-desktop-rtl-mac](https://github.com/soguy/claude-desktop-rtl-mac)
 - Earlier macOS in-place port: [@toboly/claude-desktop-rtl-patch-mac](https://github.com/toboly/claude-desktop-rtl-patch-mac)
 
+## Releases
+
+See [tags](https://github.com/AmitSudo/claude-rtl/tags) for release history.
+
 ## License
 
 MIT
